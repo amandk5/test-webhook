@@ -63,179 +63,331 @@ function getMockWeather(city) {
 }
 
 // Main webhook endpoint for Dialogflow CX
+// app.post('/webhook', (req, res) => {
+//   try {
+//     // Log incoming request
+//     logConversation('INCOMING_REQUEST', {
+//       headers: req.headers,
+//       body: req.body
+//     });
+
+//     // Extract data from Dialogflow CX request
+//     const {
+//       detectIntentResponseId,
+//       intentInfo,
+//       pageInfo,
+//       sessionInfo,
+//       text,
+//       languageCode
+//     } = req.body;
+
+//     const intentDisplayName = intentInfo?.displayName || 'Unknown Intent';
+//     const currentPage = pageInfo?.displayName || 'Unknown Page';
+//     const parameters = sessionInfo?.parameters || {};
+//     const userMessage = text || '';
+
+//     // Log extracted information
+//     logConversation('EXTRACTED_DATA', {
+//       intent: intentDisplayName,
+//       page: currentPage,
+//       parameters: parameters,
+//       userMessage: userMessage
+//     });
+
+//     let fulfillmentResponse = {
+//       messages: []
+//     };
+
+//     let updatedParameters = { ...parameters };
+
+//     // Handle different intents
+//     switch (intentDisplayName.toLowerCase()) {
+//       case 'get.weather':
+//         const city = parameters.city || parameters['geo-city'] || 'your location';
+//         const weather = getMockWeather(city);
+//         fulfillmentResponse.messages.push({
+//           text: {
+//             text: [`The weather in ${city} is ${weather.condition} with a temperature of ${weather.temp}°F and ${weather.humidity}% humidity.`]
+//           }
+//         });
+//         updatedParameters.weather_info = weather;
+//         break;
+
+//       case 'get.time':
+//       case 'current.time':
+//         fulfillmentResponse.messages.push({
+//           text: {
+//             text: [`The current date and time is: ${getCurrentDateTime()}`]
+//           }
+//         });
+//         break;
+
+//       case 'product.search':
+//       case 'find.product':
+//         const searchTerm = parameters.product_name || parameters['any'] || '';
+//         const foundProducts = mockDatabase.products.filter(product =>
+//           product.name.toLowerCase().includes(searchTerm.toLowerCase())
+//         );
+        
+//         if (foundProducts.length > 0) {
+//           const productList = foundProducts.map(p => 
+//             `${p.name} - $${p.price} (${p.stock} in stock)`
+//           ).join('\n');
+//           fulfillmentResponse.messages.push({
+//             text: {
+//               text: [`I found these products:\n${productList}`]
+//             }
+//           });
+//           updatedParameters.found_products = foundProducts;
+//         } else {
+//           fulfillmentResponse.messages.push({
+//             text: {
+//               text: [`Sorry, I couldn't find any products matching "${searchTerm}". Try searching for iPhone, Samsung, or Pixel.`]
+//             }
+//           });
+//         }
+//         break;
+
+//       case 'place.order':
+//         const productId = parameters.product_id;
+//         const quantity = parameters.quantity || 1;
+//         const product = mockDatabase.products.find(p => p.id == productId);
+        
+//         if (product && product.stock >= quantity) {
+//           const order = {
+//             id: mockDatabase.orders.length + 1,
+//             productName: product.name,
+//             quantity: quantity,
+//             totalPrice: product.price * quantity,
+//             timestamp: new Date().toISOString()
+//           };
+//           mockDatabase.orders.push(order);
+//           product.stock -= quantity;
+          
+//           fulfillmentResponse.messages.push({
+//             text: {
+//               text: [`Great! I've placed your order for ${quantity}x ${product.name}. Total: $${order.totalPrice}. Order ID: ${order.id}`]
+//             }
+//           });
+//           updatedParameters.order_confirmation = order;
+//         } else {
+//           fulfillmentResponse.messages.push({
+//             text: {
+//               text: [`Sorry, we don't have enough stock for that item or the product wasn't found.`]
+//             }
+//           });
+//         }
+//         break;
+
+//       case 'greeting':
+//       case 'default.welcome.intent':
+//         fulfillmentResponse.messages.push({
+//           text: {
+//             text: [`Hello! I'm your assistant powered by webhook integration. I can help you with weather, time, product search, and orders. What would you like to know?`]
+//           }
+//         });
+//         break;
+
+//       case 'test.webhook':
+//         fulfillmentResponse.messages.push({
+//           text: {
+//             text: [`🎉 Webhook is working perfectly! Current time: ${getCurrentDateTime()}`]
+//           }
+//         });
+//         break;
+
+//       default:
+//         // Generic response for unhandled intents
+//         fulfillmentResponse.messages.push({
+//           text: {
+//             text: [`I received your message: "${userMessage}". This is a webhook response! I can help with weather, time, products, and orders.`]
+//           }
+//         });
+//     }
+
+//     // Prepare the response
+//     const response = {
+//       fulfillment_response: fulfillmentResponse,
+//       session_info: {
+//         parameters: updatedParameters
+//       }
+//     };
+
+//     // Log outgoing response
+//     logConversation('OUTGOING_RESPONSE', response);
+
+//     // Send response back to Dialogflow CX
+//     res.json(response);
+
+//   } catch (error) {
+//     console.error('Webhook Error:', error);
+//     logConversation('ERROR', {
+//       error: error.message,
+//       stack: error.stack
+//     });
+
+//     // Send error response
+//     res.json({
+//       fulfillment_response: {
+//         messages: [{
+//           text: {
+//             text: ['Sorry, there was an error processing your request. Please try again.']
+//           }
+//         }]
+//       }
+//     });
+//   }
+// });
+// ... (existing code for imports, middleware, PORT, etc. remains the same)
+
+// Mock database for the dine-in agent
+const dineInMockDatabase = {
+  menu: [
+    { id: 1, name: "Mushroom Risotto", isSpicy: false, allergens: ['lactose'] },
+    { id: 2, name: "Spicy Tacos", isSpicy: true, allergens: ['dairy'] },
+    { id: 3, name: "Grilled Salmon", isSpicy: false, allergens: [] },
+    { id: 4, name: "Vegetable Pasta", isSpicy: false, allergens: [] },
+    { id: 5, name: "Spicy Chicken Curry", isSpicy: true, allergens: ['lactose'] }
+  ],
+  mostOrdered: [
+    { name: "Spicy Tacos", count: 15 },
+    { name: "Mushroom Risotto", count: 12 }
+  ],
+  pastOrders: {
+    // Mock user ID 123
+    "123": [{ name: "Grilled Salmon" }, { name: "Mushroom Risotto" }]
+  },
+  orders: []
+};
+
+// ... (existing helper functions like getCurrentDateTime, logConversation remain the same)
+
 app.post('/webhook', (req, res) => {
   try {
-    // Log incoming request
-    logConversation('INCOMING_REQUEST', {
-      headers: req.headers,
-      body: req.body
-    });
+    // ... (existing logging and data extraction remain the same)
+    
+    // **Modification: Get the webhook tag instead of intent display name**
+    const tag = req.body.fulfillmentInfo?.tag || intentInfo?.displayName || 'Unknown Tag';
 
-    // Extract data from Dialogflow CX request
-    const {
-      detectIntentResponseId,
-      intentInfo,
-      pageInfo,
-      sessionInfo,
-      text,
-      languageCode
-    } = req.body;
+    // ... (existing fulfillmentResponse and updatedParameters setup remains the same)
 
-    const intentDisplayName = intentInfo?.displayName || 'Unknown Intent';
-    const currentPage = pageInfo?.displayName || 'Unknown Page';
-    const parameters = sessionInfo?.parameters || {};
-    const userMessage = text || '';
-
-    // Log extracted information
-    logConversation('EXTRACTED_DATA', {
-      intent: intentDisplayName,
-      page: currentPage,
-      parameters: parameters,
-      userMessage: userMessage
-    });
-
-    let fulfillmentResponse = {
-      messages: []
-    };
-
-    let updatedParameters = { ...parameters };
-
-    // Handle different intents
-    switch (intentDisplayName.toLowerCase()) {
-      case 'get.weather':
-        const city = parameters.city || parameters['geo-city'] || 'your location';
-        const weather = getMockWeather(city);
+    // Handle different webhook tags/intents
+    // **Modification: Use a switch case on the 'tag'**
+    switch (tag.toLowerCase()) {
+      case 'suggest_most_ordered':
+        const mostOrdered = dineInMockDatabase.mostOrdered.map(item => item.name).join(', ');
         fulfillmentResponse.messages.push({
           text: {
-            text: [`The weather in ${city} is ${weather.condition} with a temperature of ${weather.temp}°F and ${weather.humidity}% humidity.`]
-          }
-        });
-        updatedParameters.weather_info = weather;
-        break;
-
-      case 'get.time':
-      case 'current.time':
-        fulfillmentResponse.messages.push({
-          text: {
-            text: [`The current date and time is: ${getCurrentDateTime()}`]
+            text: [`Today's most ordered food items are: ${mostOrdered}.`]
           }
         });
         break;
 
-      case 'product.search':
-      case 'find.product':
-        const searchTerm = parameters.product_name || parameters['any'] || '';
-        const foundProducts = mockDatabase.products.filter(product =>
-          product.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+      case 'get_dietary_info':
+        // No specific action needed here, this is a placeholder. 
+        // The playbook will ask the question and the next step will capture the answer.
+        // We can just acknowledge the request.
+        fulfillmentResponse.messages.push({
+          text: {
+            text: [`Ok, let me get that information.`]
+          }
+        });
+        break;
+      
+      case 'check_and_suggest_menu':
+        const { lactose_intolerant, dining_party, beer_preference } = parameters;
         
-        if (foundProducts.length > 0) {
-          const productList = foundProducts.map(p => 
-            `${p.name} - $${p.price} (${p.stock} in stock)`
-          ).join('\n');
+        let suggestions = dineInMockDatabase.menu;
+        
+        // Filter based on lactose intolerance
+        if (lactose_intolerant === 'true') {
+          suggestions = suggestions.filter(item => !item.allergens.includes('lactose'));
           fulfillmentResponse.messages.push({
             text: {
-              text: [`I found these products:\n${productList}`]
-            }
-          });
-          updatedParameters.found_products = foundProducts;
-        } else {
-          fulfillmentResponse.messages.push({
-            text: {
-              text: [`Sorry, I couldn't find any products matching "${searchTerm}". Try searching for iPhone, Samsung, or Pixel.`]
+              text: [`Since someone is lactose intolerant, I've filtered out items with lactose.`]
             }
           });
         }
+        
+        // Prepare suggestions based on preferences
+        const suggestionList = suggestions.map(item => item.name).join(', ');
+        
+        // Check for past orders (mocking a user ID)
+        const sessionId = req.body.sessionInfo.session.split('/').pop();
+        const pastOrders = dineInMockDatabase.pastOrders[sessionId] || [];
+        
+        let pastOrderText = '';
+        if (pastOrders.length > 0) {
+          const pastOrderNames = pastOrders.map(item => item.name).join(' and ');
+          pastOrderText = `\nBased on your past orders, I see you enjoyed the ${pastOrderNames}.`;
+        }
+        
+        fulfillmentResponse.messages.push({
+          text: {
+            text: [`Based on your preferences, I recommend: ${suggestionList}.${pastOrderText}`]
+          }
+        });
         break;
 
-      case 'place.order':
-        const productId = parameters.product_id;
-        const quantity = parameters.quantity || 1;
-        const product = mockDatabase.products.find(p => p.id == productId);
+      case 'check_spicy_family_rule':
+        const orderItem = parameters.order_item_name;
+        const partyType = parameters.dining_party;
+        const itemDetails = dineInMockDatabase.menu.find(item => item.name === orderItem);
         
-        if (product && product.stock >= quantity) {
-          const order = {
-            id: mockDatabase.orders.length + 1,
-            productName: product.name,
-            quantity: quantity,
-            totalPrice: product.price * quantity,
+        if (itemDetails?.isSpicy && partyType === 'family') {
+          // Send a warning and ask for confirmation
+          fulfillmentResponse.messages.push({
+            text: {
+              text: [`Heads up! The ${orderItem} is quite spicy, which might not be ideal for children. Are you sure you want to continue with this order?`]
+            }
+          });
+          // Set a new parameter to track this state
+          updatedParameters.spicy_warning_given = true;
+        } else {
+          // No warning needed, just confirm
+          fulfillmentResponse.messages.push({
+            text: {
+              text: [`Excellent choice! I've added the ${orderItem} to your order.`]
+            }
+          });
+          updatedParameters.spicy_warning_given = false;
+        }
+        break;
+
+      case 'place_order':
+        const orderItems = parameters.order_items || [];
+        // Here you would connect to a real database to place the order
+        const newOrder = {
+            id: dineInMockDatabase.orders.length + 1,
+            items: orderItems,
             timestamp: new Date().toISOString()
-          };
-          mockDatabase.orders.push(order);
-          product.stock -= quantity;
-          
-          fulfillmentResponse.messages.push({
-            text: {
-              text: [`Great! I've placed your order for ${quantity}x ${product.name}. Total: $${order.totalPrice}. Order ID: ${order.id}`]
-            }
-          });
-          updatedParameters.order_confirmation = order;
-        } else {
-          fulfillmentResponse.messages.push({
-            text: {
-              text: [`Sorry, we don't have enough stock for that item or the product wasn't found.`]
-            }
-          });
-        }
-        break;
-
-      case 'greeting':
-      case 'default.welcome.intent':
+        };
+        dineInMockDatabase.orders.push(newOrder);
+        
         fulfillmentResponse.messages.push({
           text: {
-            text: [`Hello! I'm your assistant powered by webhook integration. I can help you with weather, time, product search, and orders. What would you like to know?`]
+            text: [`Your order #${newOrder.id} has been placed successfully! Enjoy your meal.`]
           }
         });
+        // Clear parameters after order is placed
+        updatedParameters = {};
         break;
 
-      case 'test.webhook':
-        fulfillmentResponse.messages.push({
-          text: {
-            text: [`🎉 Webhook is working perfectly! Current time: ${getCurrentDateTime()}`]
-          }
-        });
-        break;
-
+      // ... (other cases like 'get.weather', 'get.time' can remain)
+      // **Recommendation:** Add a `default` case to handle any unmapped tag.
       default:
-        // Generic response for unhandled intents
+        // Handle unhandled tags/intents
         fulfillmentResponse.messages.push({
           text: {
-            text: [`I received your message: "${userMessage}". This is a webhook response! I can help with weather, time, products, and orders.`]
+            text: [`Sorry, I couldn't process that request.`]
           }
         });
     }
 
-    // Prepare the response
-    const response = {
-      fulfillment_response: fulfillmentResponse,
-      session_info: {
-        parameters: updatedParameters
-      }
-    };
-
-    // Log outgoing response
-    logConversation('OUTGOING_RESPONSE', response);
-
-    // Send response back to Dialogflow CX
-    res.json(response);
+    // ... (existing response preparation and sending code remains the same)
 
   } catch (error) {
-    console.error('Webhook Error:', error);
-    logConversation('ERROR', {
-      error: error.message,
-      stack: error.stack
-    });
-
-    // Send error response
-    res.json({
-      fulfillment_response: {
-        messages: [{
-          text: {
-            text: ['Sorry, there was an error processing your request. Please try again.']
-          }
-        }]
-      }
-    });
+    // ... (existing error handling remains the same)
   }
 });
 
