@@ -332,7 +332,7 @@ app.post('/webhook', async (req, res) => {
           const products = response.data.data.data.map(product => product.name).join(', ');
           fulfillmentResponse.messages.push({
             text: {
-              text: [`Here are some of our products: ${products}`]
+              text: [`Here are some of our products: ${products}${productsArray}`]
             }
           });
         } catch (error) {
@@ -696,6 +696,7 @@ process.on('SIGINT', () => {
 });
 
 module.exports = app;
+
 
 
 
