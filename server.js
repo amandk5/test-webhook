@@ -1,5 +1,6 @@
 // Dialogflow CX Webhook Server with Testing Capabilities
 const express = require('express');
+const axios = require("axios");
 const cors = require('cors');
 const app = express();
 
@@ -295,6 +296,39 @@ app.post('/webhook', (req, res) => {
         });
         break;
 
+      case 'show_me_products': 
+        const url =
+          "https://catalog-management-system-stage-1064026520425.us-central1.run.app/cms/product/v2/filter/product";
+        const payload = {
+          page: 1,
+          pageSize: 2,
+          query: "",
+          storeLocations: ["RLC_361"],
+          productTypes: ["MENU"],
+          salesChannels: ["DINE_IN"],
+        };      
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: "", // add your token if needed
+        };      
+        try {
+          const response = await axios.post(url, payload, { headers });
+          console.log("✅ Success:", response.data.data.data);
+          fulfillmentResponse.messages.push({
+            text: {
+              text: response.data.data.data
+            }
+          });
+        } catch (error) {
+          console.error("❌ Error:", error.message);
+          fulfillmentResponse.messages.push({
+            text: {
+              text: ['request failed']
+            }
+          });
+        }
+        break;
+
       case 'place_order':
         fulfillmentResponse.messages.push({
           text: {
@@ -571,4 +605,5 @@ process.on('SIGINT', () => {
 });
 
 module.exports = app;
+
 
