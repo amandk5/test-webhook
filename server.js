@@ -345,7 +345,7 @@ app.post('/webhook', async (req, res) => {
         }
         break;
 
-    case 'get_product_details':
+    case 'get.product-info':
       const productName = parameters.product_name;
       const storedProducts = updatedParameters.product_list;
       
@@ -696,6 +696,7 @@ process.on('SIGINT', () => {
 });
 
 module.exports = app;
+
 
 
 
