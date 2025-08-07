@@ -266,7 +266,7 @@ const dineInMockDatabase = {
 // A simple webhook version for testing.
 // Remove all complex logic and mock database calls.
 
-app.post('/webhook', (req, res) => {
+app.post('/webhook', async (req, res) => {
   try {
     const fulfillmentResponse = {
       messages: []
@@ -296,7 +296,7 @@ app.post('/webhook', (req, res) => {
         });
         break;
 
-      case 'show_me_products': 
+      case 'show_me_products':
         const url =
           "https://catalog-management-system-stage-1064026520425.us-central1.run.app/cms/product/v2/filter/product";
         const payload = {
@@ -306,24 +306,27 @@ app.post('/webhook', (req, res) => {
           storeLocations: ["RLC_361"],
           productTypes: ["MENU"],
           salesChannels: ["DINE_IN"],
-        };      
+        };
         const headers = {
           "Content-Type": "application/json",
           Authorization: "", // add your token if needed
-        };      
+        };
+        
         try {
           const response = await axios.post(url, payload, { headers });
           console.log("✅ Success:", response.data.data.data);
+          // Assuming the data is an array of objects, join them into a readable string
+          const products = response.data.data.data.map(product => product.productName).join(', ');
           fulfillmentResponse.messages.push({
             text: {
-              text: response.data.data.data
+              text: [`Here are some of our products: ${products}`]
             }
           });
         } catch (error) {
           console.error("❌ Error:", error.message);
           fulfillmentResponse.messages.push({
             text: {
-              text: ['request failed']
+              text: ['Sorry, the request to get products failed.']
             }
           });
         }
@@ -605,5 +608,6 @@ process.on('SIGINT', () => {
 });
 
 module.exports = app;
+
 
 
