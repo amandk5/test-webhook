@@ -316,7 +316,7 @@ app.post('/webhook', async (req, res) => {
           const response = await axios.post(url, payload, { headers });
           console.log("✅ Success:", response.data.data.data);
           // Assuming the data is an array of objects, join them into a readable string
-          const products = response.data.data.data.map(product => product.productName).join(', ');
+          const products = response.data.data.data.map(product => product.name).join(', ');
           fulfillmentResponse.messages.push({
             text: {
               text: [`Here are some of our products: ${products}`]
@@ -608,6 +608,7 @@ process.on('SIGINT', () => {
 });
 
 module.exports = app;
+
 
 
 
