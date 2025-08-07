@@ -262,132 +262,73 @@ const dineInMockDatabase = {
 
 // ... (existing helper functions like getCurrentDateTime, logConversation remain the same)
 
+// A simple webhook version for testing.
+// Remove all complex logic and mock database calls.
+
 app.post('/webhook', (req, res) => {
   try {
-    // ... (existing logging and data extraction remain the same)
+    const fulfillmentResponse = {
+      messages: []
+    };
     
-    // **Modification: Get the webhook tag instead of intent display name**
-    const tag = req.body.fulfillmentInfo?.tag || intentInfo?.displayName || 'Unknown Tag';
+    // Get the tag or intent from Dialogflow.
+    const tag = req.body.fulfillmentInfo?.tag || req.body.intentInfo?.displayName;
+    
+    // Log the received tag to verify the call is reaching here.
+    console.log(`[TEST WEBHOOK] Received tag: ${tag}`);
 
-    // ... (existing fulfillmentResponse and updatedParameters setup remains the same)
-
-    // Handle different webhook tags/intents
-    // **Modification: Use a switch case on the 'tag'**
-    switch (tag.toLowerCase()) {
+    // Simplified switch case with hardcoded responses.
+    switch (tag) {
       case 'suggest_most_ordered':
-        const mostOrdered = dineInMockDatabase.mostOrdered.map(item => item.name).join(', ');
         fulfillmentResponse.messages.push({
           text: {
-            text: [`Today's most ordered food items are: ${mostOrdered}.`]
-          }
-        });
-        break;
-
-      case 'get_dietary_info':
-        // No specific action needed here, this is a placeholder. 
-        // The playbook will ask the question and the next step will capture the answer.
-        // We can just acknowledge the request.
-        fulfillmentResponse.messages.push({
-          text: {
-            text: [`Ok, let me get that information.`]
-          }
-        });
-        break;
-      
-      case 'check_and_suggest_menu':
-        const { lactose_intolerant, dining_party, beer_preference } = parameters;
-        
-        let suggestions = dineInMockDatabase.menu;
-        
-        // Filter based on lactose intolerance
-        if (lactose_intolerant === 'true') {
-          suggestions = suggestions.filter(item => !item.allergens.includes('lactose'));
-          fulfillmentResponse.messages.push({
-            text: {
-              text: [`Since someone is lactose intolerant, I've filtered out items with lactose.`]
-            }
-          });
-        }
-        
-        // Prepare suggestions based on preferences
-        const suggestionList = suggestions.map(item => item.name).join(', ');
-        
-        // Check for past orders (mocking a user ID)
-        const sessionId = req.body.sessionInfo.session.split('/').pop();
-        const pastOrders = dineInMockDatabase.pastOrders[sessionId] || [];
-        
-        let pastOrderText = '';
-        if (pastOrders.length > 0) {
-          const pastOrderNames = pastOrders.map(item => item.name).join(' and ');
-          pastOrderText = `\nBased on your past orders, I see you enjoyed the ${pastOrderNames}.`;
-        }
-        
-        fulfillmentResponse.messages.push({
-          text: {
-            text: [`Based on your preferences, I recommend: ${suggestionList}.${pastOrderText}`]
+            text: ["🎉 Webhook received 'suggest_most_ordered' tag! It's working."]
           }
         });
         break;
 
       case 'check_spicy_family_rule':
-        const orderItem = parameters.order_item_name;
-        const partyType = parameters.dining_party;
-        const itemDetails = dineInMockDatabase.menu.find(item => item.name === orderItem);
-        
-        if (itemDetails?.isSpicy && partyType === 'family') {
-          // Send a warning and ask for confirmation
-          fulfillmentResponse.messages.push({
-            text: {
-              text: [`Heads up! The ${orderItem} is quite spicy, which might not be ideal for children. Are you sure you want to continue with this order?`]
-            }
-          });
-          // Set a new parameter to track this state
-          updatedParameters.spicy_warning_given = true;
-        } else {
-          // No warning needed, just confirm
-          fulfillmentResponse.messages.push({
-            text: {
-              text: [`Excellent choice! I've added the ${orderItem} to your order.`]
-            }
-          });
-          updatedParameters.spicy_warning_given = false;
-        }
+        fulfillmentResponse.messages.push({
+          text: {
+            text: ["🎉 Webhook received 'check_spicy_family_rule' tag! It's working."]
+          }
+        });
         break;
 
       case 'place_order':
-        const orderItems = parameters.order_items || [];
-        // Here you would connect to a real database to place the order
-        const newOrder = {
-            id: dineInMockDatabase.orders.length + 1,
-            items: orderItems,
-            timestamp: new Date().toISOString()
-        };
-        dineInMockDatabase.orders.push(newOrder);
-        
         fulfillmentResponse.messages.push({
           text: {
-            text: [`Your order #${newOrder.id} has been placed successfully! Enjoy your meal.`]
+            text: ["🎉 Webhook received 'place_order' tag! It's working."]
           }
         });
-        // Clear parameters after order is placed
-        updatedParameters = {};
         break;
 
-      // ... (other cases like 'get.weather', 'get.time' can remain)
-      // **Recommendation:** Add a `default` case to handle any unmapped tag.
       default:
-        // Handle unhandled tags/intents
         fulfillmentResponse.messages.push({
           text: {
-            text: [`Sorry, I couldn't process that request.`]
+            text: [`🎉 Webhook received an unhandled tag or intent: ${tag}. It's still working.`]
           }
         });
     }
 
-    // ... (existing response preparation and sending code remains the same)
-
+    const response = {
+      fulfillment_response: fulfillmentResponse
+    };
+    
+    // Send the response back.
+    res.json(response);
+    
   } catch (error) {
-    // ... (existing error handling remains the same)
+    console.error('Webhook Error:', error);
+    res.status(500).json({
+      fulfillment_response: {
+        messages: [{
+          text: {
+            text: ['Sorry, a test error occurred in the webhook.']
+          }
+        }]
+      }
+    });
   }
 });
 
@@ -630,3 +571,4 @@ process.on('SIGINT', () => {
 });
 
 module.exports = app;
+
