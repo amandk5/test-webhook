@@ -271,9 +271,17 @@ app.post('/webhook', async (req, res) => {
     const fulfillmentResponse = {
       messages: []
     };
+
+    // Extract data from Dialogflow CX request
+    const { sessionInfo, fulfillmentInfo } = req.body;
     
     // Get the tag or intent from Dialogflow.
-    const tag = req.body.fulfillmentInfo?.tag || req.body.intentInfo?.displayName;
+    const tag = fulfillmentInfo?.tag || req.body.intentInfo?.displayName;
+    const parameters = sessionInfo?.parameters || {};
+
+    // This is where updatedParameters is defined. 
+    // It's a copy of the existing parameters.
+    let updatedParameters = { ...parameters };
     
     // Log the received tag to verify the call is reaching here.
     console.log(`[TEST WEBHOOK] Received tag: ${tag}`);
@@ -315,6 +323,11 @@ app.post('/webhook', async (req, res) => {
         try {
           const response = await axios.post(url, payload, { headers });
           console.log("✅ Success:", response.data.data.data);
+          
+          const productsArray = response.data.data.data;        
+          // Here, you are adding the 'product_list' to updatedParameters.
+          updatedParameters.product_list = productsArray;
+          
           // Assuming the data is an array of objects, join them into a readable string
           const products = response.data.data.data.map(product => product.name).join(', ');
           fulfillmentResponse.messages.push({
@@ -331,6 +344,78 @@ app.post('/webhook', async (req, res) => {
           });
         }
         break;
+
+    case 'get_product_details':
+      const productName = parameters.product_name;
+      const storedProducts = updatedParameters.product_list;
+      
+      if (!productName) {
+          fulfillmentResponse.messages.push({
+              text: {
+                  text: ["Please specify which product you want to know about."]
+              }
+          });
+      } else if (storedProducts && storedProducts.length > 0) {
+          const foundProduct = storedProducts.find(p => p.name.toLowerCase() === productName.toLowerCase());
+          
+          if (foundProduct) {
+              // Construct the response using natural language from the JSON data
+              const details = `The ${foundProduct.name} is a delicious choice! It's described as: "${foundProduct.description}". It costs $100 and is part of our ${foundProduct.appCategories.categoryLevel1} menu.`;
+              
+              fulfillmentResponse.messages.push({
+                  text: {
+                      text: [details]
+                  }
+              });
+          } else {
+              // If the product is not in the stored list
+              fulfillmentResponse.messages.push({
+                  text: {
+                      text: [`Sorry, I couldn't find "${productName}" in the current product list.`]
+                  }
+              });
+          }
+      } else {
+          // If the product list is not in the session parameters, make a new API call.
+          // This is a robust fallback for cases where the user asks about a product directly.
+          try {
+              const url = "https://catalog-management-system-stage-1064026520425.us-central1.run.app/cms/product/v2/filter/product";
+              const payload = {
+                  page: 1,
+                  pageSize: 1,
+                  query: productName,
+                  storeLocations: ["RLC_361"],
+                  productTypes: ["MENU"],
+                  salesChannels: ["DINE_IN"]
+              };
+              
+              const response = await axios.post(url, payload);
+              const productData = response.data.data.data[0];
+    
+              if (productData) {
+                  const details = `I found some info for you! The ${productData.name} is described as: "${productData.description}". It costs $100.`;
+                  fulfillmentResponse.messages.push({
+                      text: {
+                          text: [details]
+                      }
+                  });
+              } else {
+                  fulfillmentResponse.messages.push({
+                      text: {
+                          text: [`Sorry, I couldn't find any information for "${productName}".`]
+                      }
+                  });
+              }
+          } catch (error) {
+              console.error("❌ Error during direct API call:", error.message);
+              fulfillmentResponse.messages.push({
+                  text: {
+                      text: ['I apologize, but I am unable to get that information at the moment.']
+                  }
+              });
+          }
+      }
+      break;  
 
       case 'place_order':
         fulfillmentResponse.messages.push({
@@ -349,7 +434,10 @@ app.post('/webhook', async (req, res) => {
     }
 
     const response = {
-      fulfillment_response: fulfillmentResponse
+      fulfillment_response: fulfillmentResponse,
+      session_info: {
+        parameters: updatedParameters // This line sends the updated parameters back to Dialogflow.
+      }
     };
     
     // Send the response back.
@@ -608,6 +696,7 @@ process.on('SIGINT', () => {
 });
 
 module.exports = app;
+
 
 
 
